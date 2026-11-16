@@ -1,0 +1,59 @@
+!
+! Base configuration template for {{ device.name }}
+!
+hostname {{ device.name }}
+!
+{% if device.vendor == 'cisco' %}
+enable secret {{ device.credentials.enable_password }}
+!
+aaa new-model
+!
+ip domain-name {{ device.domain_name | default('local') }}
+crypto key generate rsa modulus 2048
+!
+ip ssh version 2
+ip ssh authentication-retries 3
+ip ssh time-out 60
+!
+line vty 0 15
+ transport input ssh
+ login local
+!
+{% elif device.vendor == 'eltex' %}
+enable password {{ device.credentials.enable_password }}
+!
+ip domain-name {{ device.domain_name | default('local') }}
+!
+line vty 0 4
+ transport input ssh
+ login local
+!
+{% endif %}
+!
+! Management interface
+interface {{ device.mgmt_interface | default('GigabitEthernet0/0') }}
+ description Management
+ ip address {{ device.mgmt_ip | default('10.0.0.1/24') }}
+ no shutdown
+!
+! NTP
+ntp server {{ device.ntp_server | default('pool.ntp.org') }}
+!
+! Logging
+logging buffered 512000
+logging host {{ device.syslog_server | default('10.0.0.100') }}
+logging trap informational
+!
+! SNMP (optional)
+{% if device.snmp_community is defined %}
+snmp-server community {{ device.snmp_community }} RO
+snmp-server location {{ device.location | default('Unknown') }}
+snmp-server contact {{ device.contact | default('admin@example.com') }}
+{% endif %}
+!
+! User accounts
+{% for user in device.local_users | default([]) %}
+username {{ user.name }} privilege {{ user.privilege | default(15) }} secret {{ user.password }}
+{% endfor %}
+!
+end
